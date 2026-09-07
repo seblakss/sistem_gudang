@@ -45,3 +45,5 @@ test_output.xlsx
 test_export_run.xlsx
 .temp/
 supabase/.temp/
+.wrangler/
+.cloudflare/
