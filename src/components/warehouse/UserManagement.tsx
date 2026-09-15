@@ -138,7 +138,7 @@ export const UserManagement: React.FC = () => {
   };
 
   return (
-    <div className="space-y-4 pb-20 sm:pb-6">
+    <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between gap-2">
         <div>
@@ -168,12 +168,12 @@ export const UserManagement: React.FC = () => {
           placeholder="Cari username atau nama staf..."
           value={searchTerm}
           onChange={e => setSearchTerm(e.target.value)}
-          className="w-full pl-9 pr-3.5 py-2.5 text-xs rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 shadow-sm"
+          className="w-full pl-9 pr-3.5 py-2.5 text-xs rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 shadow-sm"
         />
       </div>
 
-      {/* User Cards List */}
-      <div className="space-y-3">
+      {/* User Cards Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredUsers.map(u => {
           const loc = locMap.get(u.location_id);
           const isWarehouse = u.role === 'ADMIN_GUDANG';
@@ -182,16 +182,18 @@ export const UserManagement: React.FC = () => {
           return (
             <div
               key={u.id}
-              className={`p-4 rounded-2xl border transition-all space-y-3 ${
+              className={`p-4 rounded-2xl border transition-all space-y-3 flex flex-col justify-between ${
                 isActive
-                  ? 'bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 shadow-sm'
+                  ? 'bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 shadow-sm hover:border-slate-300 dark:hover:border-slate-700'
                   : 'bg-slate-100/60 dark:bg-slate-800/40 border-dashed border-slate-300 dark:border-slate-700 opacity-70'
               }`}
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-3">
-                  <div className={`p-2.5 rounded-2xl text-white font-bold text-xs ${
-                    isWarehouse ? 'bg-brand-600 shadow-glow' : 'bg-emerald-600 shadow-glow-emerald'
+                  <div className={`p-2.5 rounded-xl text-white font-bold text-xs border ${
+                    isWarehouse 
+                      ? 'bg-brand-600 border-brand-500/40' 
+                      : 'bg-emerald-600 border-emerald-500/40'
                   }`}>
                     {isWarehouse ? <Warehouse className="w-4 h-4" /> : <Store className="w-4 h-4" />}
                   </div>

@@ -42,7 +42,7 @@ export const ReceivingHandshakeModal: React.FC<ReceivingHandshakeModalProps> = (
     return actual < item.qty_dispatched;
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser) return;
 
@@ -68,8 +68,10 @@ export const ReceivingHandshakeModal: React.FC<ReceivingHandshakeModalProps> = (
         discrepancyReason: discrepancyReasons[item.item_id] || '',
       }));
 
-      receiveTransfer(request.id, currentUser.id, payload);
+      await receiveTransfer(request.id, currentUser.id, payload);
       onClose();
+    } catch {
+      // Handled by toast
     } finally {
       setIsSubmitting(false);
     }

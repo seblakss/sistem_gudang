@@ -74,28 +74,32 @@ export const RequestApprovalQueue: React.FC = () => {
     setModalType('REJECT');
   };
 
-  const handleModalSubmit = (e: React.FormEvent) => {
+  const handleModalSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeRequest || !currentUser) return;
 
-    if (modalType === 'PARTIAL') {
-      const approvedItems = activeRequest.items.map(item => ({
-        itemId: item.item_id,
-        qtyApproved: partialQtys[item.item_id] !== undefined ? partialQtys[item.item_id] : item.qty_requested,
-      }));
+    try {
+      if (modalType === 'PARTIAL') {
+        const approvedItems = activeRequest.items.map(item => ({
+          itemId: item.item_id,
+          qtyApproved: partialQtys[item.item_id] !== undefined ? partialQtys[item.item_id] : item.qty_requested,
+        }));
 
-      authorizeRequest(activeRequest.id, currentUser.id, 'APPROVE_PARTIAL', {
-        approvedItems,
-        rejectionNotes: notes,
-      });
-    } else if (modalType === 'REJECT') {
-      if (!notes.trim()) {
-        alert('Wajib menyertakan alasan penolakan.');
-        return;
+        await authorizeRequest(activeRequest.id, currentUser.id, 'APPROVE_PARTIAL', {
+          approvedItems,
+          rejectionNotes: notes,
+        });
+      } else if (modalType === 'REJECT') {
+        if (!notes.trim()) {
+          alert('Wajib menyertakan alasan penolakan.');
+          return;
+        }
+        await authorizeRequest(activeRequest.id, currentUser.id, 'REJECT', {
+          rejectionNotes: notes,
+        });
       }
-      authorizeRequest(activeRequest.id, currentUser.id, 'REJECT', {
-        rejectionNotes: notes,
-      });
+    } catch {
+      // Handled by toast
     }
 
     setModalType(null);
@@ -113,7 +117,7 @@ export const RequestApprovalQueue: React.FC = () => {
   };
 
   return (
-    <div className="space-y-4 pb-20 sm:pb-6">
+    <div className="space-y-4">
       {/* Header & Filter */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
@@ -131,7 +135,7 @@ export const RequestApprovalQueue: React.FC = () => {
           <select
             value={selectedStoreFilter}
             onChange={e => setSelectedStoreFilter(e.target.value === 'ALL' ? 'ALL' : Number(e.target.value))}
-            className="w-full sm:w-auto px-3 py-2 rounded-xl text-xs font-semibold border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm focus:outline-none"
+            className="w-full sm:w-auto px-3 py-2 rounded-xl text-xs font-semibold border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
           >
             <option value="ALL">Semua Cabang Toko</option>
             <option value={1}>Toko 1 (Cabang Barat)</option>
@@ -163,7 +167,7 @@ export const RequestApprovalQueue: React.FC = () => {
           </p>
         </div>
       ) : (
-        <div className="space-y-3.5">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {pendingRequests.map(req => {
             const destinationStore = locMap.get(req.to_location_id);
             const requester = userMap.get(req.requested_by);

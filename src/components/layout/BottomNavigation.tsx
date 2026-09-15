@@ -99,7 +99,7 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
   const tabs = isWarehouseAdmin ? warehouseTabs : storeTabs;
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border-t border-slate-200 dark:border-slate-800 pb-safe shadow-[0_-4px_20px_rgba(0,0,0,0.06)]">
+    <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border-t border-slate-200/80 dark:border-slate-800 pb-safe shadow-[0_-4px_20px_rgba(0,0,0,0.06)]">
       <div className="max-w-lg mx-auto flex items-center justify-around px-2 py-1.5">
         {tabs.map(tab => {
           const Icon = tab.icon;
@@ -109,7 +109,7 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({
             <button
               key={tab.id}
               onClick={() => onSelectTab(tab.id)}
-              className={`relative flex flex-col items-center justify-center py-1 px-2.5 rounded-2xl transition-all duration-150 active:scale-90 ${
+              className={`relative flex flex-col items-center justify-center py-1 px-2.5 rounded-2xl transition-all duration-150 active:scale-95 ${
                 isActive
                   ? isWarehouseAdmin
                     ? 'text-brand-600 dark:text-brand-400 font-bold'

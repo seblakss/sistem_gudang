@@ -72,7 +72,7 @@ export const CreateRequestModal: React.FC<CreateRequestModalProps> = ({
     setRows(updated);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser || !myLocationId) return;
 
@@ -89,10 +89,12 @@ export const CreateRequestModal: React.FC<CreateRequestModalProps> = ({
 
     setIsSubmitting(true);
     try {
-      createRequest(myLocationId, currentUser.id, validRows, notes);
+      await createRequest(myLocationId, currentUser.id, validRows, notes);
       onClose();
       setRows([{ itemId: items[0]?.id || 1, qtyRequested: 10 }]);
       setNotes('Pengisian stok toko harian');
+    } catch {
+      // Handled by toast
     } finally {
       setIsSubmitting(false);
     }
@@ -149,7 +151,7 @@ export const CreateRequestModal: React.FC<CreateRequestModalProps> = ({
                       >
                         {items.map(i => (
                           <option key={i.id} value={i.id}>
-                            [{i.sku}] {i.name} — {formatRupiah(i.price || 0)} / {i.unit}
+                            [{i.sku}] {i.name} • {formatRupiah(i.price || 0)} / {i.unit}
                           </option>
                         ))}
                       </select>

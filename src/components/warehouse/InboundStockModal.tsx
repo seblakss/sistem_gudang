@@ -36,7 +36,7 @@ export const InboundStockModal: React.FC<InboundStockModalProps> = ({
     }
   }, [preselectedItemId, items]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser) return;
     if (qty <= 0) {
@@ -46,11 +46,13 @@ export const InboundStockModal: React.FC<InboundStockModalProps> = ({
 
     setIsSubmitting(true);
     try {
-      inboundStock(Number(itemId), Number(qty), notes, currentUser.id, supplierName);
+      await inboundStock(Number(itemId), Number(qty), notes, currentUser.id, supplierName);
       onClose();
       // Reset form defaults
       setQty(100);
       setNotes('Penerimaan PO Pabrik / Supplier');
+    } catch {
+      // Toast handles error
     } finally {
       setIsSubmitting(false);
     }

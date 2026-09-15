@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { Item, Inventory, TransferRequest, InventoryMutation, Notification } from '../types';
 import { StorageRepository } from '../db/storageRepository';
+import { SupabaseService } from '../services/supabaseService';
+import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 
 export interface ToastMessage {
   id: string;
@@ -16,19 +18,20 @@ interface InventoryContextType {
   mutations: InventoryMutation[];
   notifications: Notification[];
   toasts: ToastMessage[];
-  refreshData: () => void;
+  isLoading: boolean;
+  refreshData: () => Promise<void>;
   showToast: (type: ToastMessage['type'], title: string, message?: string) => void;
   removeToast: (id: string) => void;
   
   // Actions
-  addNewItem: (data: Omit<Item, 'id' | 'created_at'>) => Item;
-  inboundStock: (itemId: number, qty: number, notes: string, userId: string, supplierName?: string) => void;
-  createRequest: (toLocationId: number, requestedByUserId: string, itemsData: Array<{ itemId: number; qtyRequested: number }>, notes?: string) => TransferRequest;
-  authorizeRequest: (requestId: number, adminUserId: string, decision: 'APPROVE_FULL' | 'APPROVE_PARTIAL' | 'REJECT', options?: { approvedItems?: Array<{ itemId: number; qtyApproved: number }>; rejectionNotes?: string }) => void;
-  dispatchRequest: (requestId: number, adminUserId: string) => void;
-  receiveTransfer: (requestId: number, storeUserId: string, receivedItems: Array<{ itemId: number; qtyReceived: number; discrepancyReason?: string }>) => void;
+  addNewItem: (data: Omit<Item, 'id' | 'created_at'>) => Promise<Item>;
+  inboundStock: (itemId: number, qty: number, notes: string, userId: string, supplierName?: string) => Promise<void>;
+  createRequest: (toLocationId: number, requestedByUserId: string, itemsData: Array<{ itemId: number; qtyRequested: number }>, notes?: string) => Promise<TransferRequest>;
+  authorizeRequest: (requestId: number, adminUserId: string, decision: 'APPROVE_FULL' | 'APPROVE_PARTIAL' | 'REJECT', options?: { approvedItems?: Array<{ itemId: number; qtyApproved: number }>; rejectionNotes?: string }) => Promise<void>;
+  dispatchRequest: (requestId: number, adminUserId: string) => Promise<void>;
+  receiveTransfer: (requestId: number, storeUserId: string, receivedItems: Array<{ itemId: number; qtyReceived: number; discrepancyReason?: string }>) => Promise<void>;
   markNotificationRead: (id: string) => void;
-  loadSampleDataPreset: () => void;
+  loadSampleDataPreset: () => Promise<void>;
   resetToClean: () => void;
 }
 
@@ -41,17 +44,84 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [mutations, setMutations] = useState<InventoryMutation[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  const refreshData = useCallback(() => {
-    setItems(StorageRepository.getItems());
-    setInventories(StorageRepository.getInventories());
-    setRequests(StorageRepository.getRequests());
-    setMutations(StorageRepository.getMutations());
-    setNotifications(StorageRepository.getNotifications());
+  const refreshData = useCallback(async () => {
+    try {
+      const [itms, invs, reqs, muts] = await Promise.all([
+        SupabaseService.getItems(),
+        SupabaseService.getInventories(),
+        SupabaseService.getRequests(),
+        SupabaseService.getMutations(),
+      ]);
+
+      setItems(itms);
+      setInventories(invs);
+      setRequests(reqs);
+      setMutations(muts);
+      setNotifications(StorageRepository.getNotifications());
+    } catch (err) {
+      console.warn('Fallback to local storage data:', err);
+      setItems(StorageRepository.getItems());
+      setInventories(StorageRepository.getInventories());
+      setRequests(StorageRepository.getRequests());
+      setMutations(StorageRepository.getMutations());
+      setNotifications(StorageRepository.getNotifications());
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
+  // Initial fetch and Realtime Subscription
   useEffect(() => {
     refreshData();
+
+    if (isSupabaseConfigured && supabase) {
+      const channel = supabase
+        .channel('schema-inventory-changes')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'items' },
+          () => {
+            refreshData();
+          }
+        )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'inventories' },
+          () => {
+            refreshData();
+          }
+        )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'transfer_requests' },
+          () => {
+            refreshData();
+          }
+        )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'transfer_request_items' },
+          () => {
+            refreshData();
+          }
+        )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'inventory_mutations' },
+          () => {
+            refreshData();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        if (supabase) {
+          supabase.removeChannel(channel);
+        }
+      };
+    }
   }, [refreshData]);
 
   const showToast = useCallback((type: ToastMessage['type'], title: string, message?: string) => {
@@ -66,10 +136,10 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setToasts(prev => prev.filter(t => t.id !== id));
   }, []);
 
-  const addNewItem = (data: Omit<Item, 'id' | 'created_at'>) => {
+  const addNewItem = async (data: Omit<Item, 'id' | 'created_at'>): Promise<Item> => {
     try {
-      const created = StorageRepository.saveItem(data);
-      refreshData();
+      const created = await SupabaseService.createItem(data);
+      await refreshData();
       showToast('success', 'Master Barang Ditambahkan', `SKU ${created.sku} (${created.name}) berhasil disimpan.`);
       return created;
     } catch (err: any) {
@@ -78,10 +148,10 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   };
 
-  const inboundStock = (itemId: number, qty: number, notes: string, userId: string, supplierName?: string) => {
+  const inboundStock = async (itemId: number, qty: number, notes: string, userId: string, supplierName?: string): Promise<void> => {
     try {
-      StorageRepository.addStockInbound(itemId, qty, notes, userId, supplierName);
-      refreshData();
+      await SupabaseService.inboundStock(itemId, qty, notes, userId, supplierName);
+      await refreshData();
       showToast('success', 'Stock Inbound Berhasil', `Berhasil menambah ${qty} unit ke Gudang Pusat.`);
     } catch (err: any) {
       showToast('error', 'Gagal Inbound Stok', err.message);
@@ -89,10 +159,15 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   };
 
-  const createRequest = (toLocationId: number, requestedByUserId: string, itemsData: Array<{ itemId: number; qtyRequested: number }>, notes?: string) => {
+  const createRequest = async (
+    toLocationId: number,
+    requestedByUserId: string,
+    itemsData: Array<{ itemId: number; qtyRequested: number }>,
+    notes?: string
+  ): Promise<TransferRequest> => {
     try {
-      const newReq = StorageRepository.createTransferRequest(toLocationId, requestedByUserId, itemsData, notes);
-      refreshData();
+      const newReq = await SupabaseService.createTransferRequest(toLocationId, requestedByUserId, itemsData, notes);
+      await refreshData();
       showToast('success', 'Transfer Request Terkirim', `Dokumen ${newReq.request_number} berhasil diajukan.`);
       return newReq;
     } catch (err: any) {
@@ -101,19 +176,19 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   };
 
-  const authorizeRequest = (
+  const authorizeRequest = async (
     requestId: number,
     adminUserId: string,
     decision: 'APPROVE_FULL' | 'APPROVE_PARTIAL' | 'REJECT',
     options?: { approvedItems?: Array<{ itemId: number; qtyApproved: number }>; rejectionNotes?: string }
-  ) => {
+  ): Promise<void> => {
     try {
-      const res = StorageRepository.authorizeRequest(requestId, adminUserId, decision, options);
-      refreshData();
+      await SupabaseService.authorizeTransferRequest(requestId, adminUserId, decision, options);
+      await refreshData();
       if (decision === 'REJECT') {
-        showToast('warning', 'Request Ditolak', `Permintaan ${res.request_number} telah ditolak.`);
+        showToast('warning', 'Request Ditolak', `Permintaan #${requestId} telah ditolak.`);
       } else {
-        showToast('success', 'Otorisasi Berhasil', `Stok berhasil direservasi untuk dokumen ${res.request_number}.`);
+        showToast('success', 'Otorisasi Berhasil', `Stok berhasil direservasi.`);
       }
     } catch (err: any) {
       showToast('error', 'Gagal Otorisasi Request', err.message);
@@ -121,30 +196,26 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   };
 
-  const dispatchRequest = (requestId: number, adminUserId: string) => {
+  const dispatchRequest = async (requestId: number, adminUserId: string): Promise<void> => {
     try {
-      const res = StorageRepository.dispatchRequest(requestId, adminUserId);
-      refreshData();
-      showToast('success', 'Barang Telah Di-Dispatch', `Surat Jalan ${res.do_number} diterbitkan.`);
+      await SupabaseService.dispatchTransferRequest(requestId, adminUserId);
+      await refreshData();
+      showToast('success', 'Barang Telah Di-Dispatch', `Surat Jalan (DO) diterbitkan.`);
     } catch (err: any) {
       showToast('error', 'Gagal Dispatch Barang', err.message);
       throw err;
     }
   };
 
-  const receiveTransfer = (
+  const receiveTransfer = async (
     requestId: number,
     storeUserId: string,
     receivedItems: Array<{ itemId: number; qtyReceived: number; discrepancyReason?: string }>
-  ) => {
+  ): Promise<void> => {
     try {
-      const res = StorageRepository.receiveTransfer(requestId, storeUserId, receivedItems);
-      refreshData();
-      if (res.status === 'DISCREPANCY') {
-        showToast('warning', 'Penerimaan dengan Selisih (Discrepancy)', `Dokumen ${res.request_number} selesai. Selisih telah dialokasikan ke loss ledger.`);
-      } else {
-        showToast('success', 'Serah Terima Selesai (100% Cocok)', `Stok toko berhasil bertambah dari dokumen ${res.request_number}.`);
-      }
+      await SupabaseService.receiveTransferRequest(requestId, storeUserId, receivedItems);
+      await refreshData();
+      showToast('success', 'Serah Terima Selesai', `Stok toko berhasil diperbarui.`);
     } catch (err: any) {
       showToast('error', 'Gagal Mengonfirmasi Penerimaan', err.message);
       throw err;
@@ -156,16 +227,20 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     refreshData();
   };
 
-  const loadSampleDataPreset = () => {
-    StorageRepository.loadSampleData();
-    refreshData();
-    showToast('info', 'Preset Sampel Dimuat', 'Data katalog dan saldo stok sampel siap digunakan.');
+  const loadSampleDataPreset = async (): Promise<void> => {
+    const res = await SupabaseService.seedSampleData();
+    await refreshData();
+    if (res.success) {
+      showToast('info', 'Preset Sampel Dimuat', res.message);
+    } else {
+      showToast('warning', 'Info Sampel', res.message);
+    }
   };
 
   const resetToClean = () => {
     StorageRepository.resetToInitial();
     refreshData();
-    showToast('info', 'Data Direset', 'Semua data telah direset ke kondisi awal.');
+    showToast('info', 'Data Direset', 'Semua data lokal telah direset ke kondisi awal.');
   };
 
   return (
@@ -177,6 +252,7 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         mutations,
         notifications,
         toasts,
+        isLoading,
         refreshData,
         showToast,
         removeToast,

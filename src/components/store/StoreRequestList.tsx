@@ -41,7 +41,7 @@ export const StoreRequestList: React.FC<StoreRequestListProps> = ({ initialFilte
   };
 
   return (
-    <div className="space-y-4 pb-20 sm:pb-6">
+    <div className="space-y-4">
       {/* Header & Filter */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
@@ -58,7 +58,7 @@ export const StoreRequestList: React.FC<StoreRequestListProps> = ({ initialFilte
         <select
           value={statusFilter}
           onChange={e => setStatusFilter(e.target.value)}
-          className="w-full sm:w-auto px-3 py-2 rounded-xl text-xs font-semibold border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm focus:outline-none"
+          className="w-full sm:w-auto px-3 py-2 rounded-xl text-xs font-semibold border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
         >
           <option value="ALL">Semua Status</option>
           <option value="IN_TRANSIT">Sedang Dikirim (In-Transit)</option>
@@ -82,7 +82,7 @@ export const StoreRequestList: React.FC<StoreRequestListProps> = ({ initialFilte
           </p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {storeRequests.map(req => {
             const isExpanded = expandedReqId === req.id;
             const totalRequested = req.items.reduce((s, i) => s + i.qty_requested, 0);

@@ -26,10 +26,14 @@ export const DispatchManagement: React.FC = () => {
   // Currently In-Transit (DISPATCHED)
   const activeInTransit = requests.filter(r => r.status === 'IN_TRANSIT');
 
-  const handleDispatch = (req: TransferRequest) => {
+  const handleDispatch = async (req: TransferRequest) => {
     if (!currentUser) return;
     if (confirm(`Konfirmasi pengiriman fisik barang untuk ${req.request_number}? Stok Gudang akan dipotong dan nomor Surat Jalan DO diterbitkan.`)) {
-      dispatchRequest(req.id, currentUser.id);
+      try {
+        await dispatchRequest(req.id, currentUser.id);
+      } catch {
+        // Handled by toast
+      }
     }
   };
 
@@ -45,7 +49,7 @@ export const DispatchManagement: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 pb-20 sm:pb-6">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between gap-2">
         <div>
@@ -86,7 +90,7 @@ export const DispatchManagement: React.FC = () => {
             </p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {readyToDispatch.map(req => {
               const dest = locMap.get(req.to_location_id);
               const totalItems = req.items.reduce((sum, i) => sum + i.qty_approved, 0);
@@ -163,7 +167,7 @@ export const DispatchManagement: React.FC = () => {
             </p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {activeInTransit.map(req => {
               const dest = locMap.get(req.to_location_id);
               const totalDispatched = req.items.reduce((sum, i) => sum + i.qty_dispatched, 0);

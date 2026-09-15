@@ -32,6 +32,8 @@ export const MasterItemManagement: React.FC = () => {
     safety_stock: 10,
   });
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const categories = ['ALL', ...Array.from(new Set(items.map(i => i.category || 'Umum')))];
 
   const filteredItems = items.filter(item => {
@@ -41,12 +43,13 @@ export const MasterItemManagement: React.FC = () => {
     return matchSearch && matchCategory;
   });
 
-  const handleCreateItem = (e: React.FormEvent) => {
+  const handleCreateItem = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.sku || !formData.name) return;
+    if (!formData.sku || !formData.name || isSubmitting) return;
 
+    setIsSubmitting(true);
     try {
-      addNewItem({
+      await addNewItem({
         sku: formData.sku.trim().toUpperCase(),
         name: formData.name.trim(),
         category: formData.category.trim(),
@@ -65,6 +68,8 @@ export const MasterItemManagement: React.FC = () => {
       });
     } catch {
       // Handled by toast
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -188,7 +193,7 @@ export const MasterItemManagement: React.FC = () => {
           </button>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {filteredItems.map(item => {
             const hubInv = getInv(0, item.id);
             const store1Inv = getInv(1, item.id);
@@ -200,71 +205,73 @@ export const MasterItemManagement: React.FC = () => {
             return (
               <div
                 key={item.id}
-                className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 shadow-sm space-y-3"
+                className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 shadow-sm hover:border-slate-300 dark:hover:border-slate-700 transition-all flex flex-col justify-between gap-3"
               >
                 {/* Header Card */}
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-extrabold text-sm text-slate-900 dark:text-white leading-tight">
-                        {item.name}
-                      </span>
-                      {isLowStockInHub && (
-                        <span title="Stok Menipis">
-                          <ShieldAlert className="w-4 h-4 text-amber-500 shrink-0" />
+                <div>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-extrabold text-sm text-slate-900 dark:text-white leading-tight">
+                          {item.name}
                         </span>
-                      )}
+                        {isLowStockInHub && (
+                          <span title="Stok Menipis">
+                            <ShieldAlert className="w-4 h-4 text-amber-500 shrink-0" />
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                        <span className="font-mono tabular-nums text-[11px] font-bold text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-950/60 px-2 py-0.5 rounded-lg border border-brand-200/60 dark:border-brand-900/60">
+                          {item.sku}
+                        </span>
+                        <span className="text-[11px] font-bold font-mono tabular-nums text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-lg border border-emerald-200/60 dark:border-emerald-900/60">
+                          {formatRupiah(item.price || 0)}
+                        </span>
+                        <span className="text-[10px] text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
+                          {item.category}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 mt-1 flex-wrap">
-                      <span className="font-mono text-[11px] font-bold text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-950/60 px-2 py-0.5 rounded">
-                        {item.sku}
-                      </span>
-                      <span className="text-[11px] font-extrabold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded">
-                        {formatRupiah(item.price || 0)} / {item.unit}
-                      </span>
-                      <span className="text-[10px] text-slate-400">
-                        {item.category}
-                      </span>
-                    </div>
-                  </div>
 
-                  <button
-                    onClick={() => openInboundForItem(item.id)}
-                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 active:scale-95 transition-transform shrink-0"
-                  >
-                    <ArrowDownRight className="w-3.5 h-3.5" />
-                    <span>Inbound</span>
-                  </button>
+                    <button
+                      onClick={() => openInboundForItem(item.id)}
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 active:scale-95 transition-all shrink-0"
+                    >
+                      <ArrowDownRight className="w-3.5 h-3.5" />
+                      <span>Inbound</span>
+                    </button>
+                  </div>
                 </div>
 
                 {/* Central Warehouse Quantities */}
-                <div className="grid grid-cols-3 gap-2 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 text-center">
+                <div className="grid grid-cols-3 gap-1.5 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 text-center">
                   <div>
                     <span className="text-[10px] text-slate-400 uppercase font-semibold block">Gudang Bebas</span>
-                    <span className="text-base font-black text-brand-600 dark:text-brand-400">
+                    <span className="text-base font-bold font-mono tabular-nums text-brand-600 dark:text-brand-400">
                       {formatNumber(hubInv.stock_available)}
                     </span>
                   </div>
 
                   <div>
-                    <span className="text-[10px] text-slate-400 uppercase font-semibold block">Terkunci (Resv)</span>
-                    <span className="text-base font-bold text-indigo-600 dark:text-indigo-400">
+                    <span className="text-[10px] text-slate-400 uppercase font-semibold block">Terkunci</span>
+                    <span className="text-base font-bold font-mono tabular-nums text-indigo-600 dark:text-indigo-400">
                       {formatNumber(hubInv.stock_reserved)}
                     </span>
                   </div>
 
                   <div>
                     <span className="text-[10px] text-slate-400 uppercase font-semibold block">In-Transit</span>
-                    <span className="text-base font-bold text-blue-600 dark:text-blue-400">
+                    <span className="text-base font-bold font-mono tabular-nums text-blue-600 dark:text-blue-400">
                       {formatNumber(hubInv.stock_in_transit)}
                     </span>
                   </div>
                 </div>
 
                 {/* Stock across 3 stores breakdown */}
-                <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-100 dark:border-slate-800">
-                  <span className="text-slate-400 font-medium">Stok di 3 Cabang:</span>
-                  <div className="flex items-center gap-1.5 font-mono font-bold">
+                <div className="flex items-center justify-between text-[11px] text-slate-500 pt-2 border-t border-slate-100 dark:border-slate-800">
+                  <span className="text-slate-400 font-medium">3 Cabang:</span>
+                  <div className="flex items-center gap-1.5 font-mono tabular-nums font-bold text-[10px]">
                     <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
                       T1: {store1Inv.stock_available}
                     </span>
@@ -391,9 +398,10 @@ export const MasterItemManagement: React.FC = () => {
             </button>
             <button
               type="submit"
-              className="w-full sm:w-auto px-5 py-3 rounded-xl text-xs font-bold text-white bg-brand-600 hover:bg-brand-500 shadow-md active:scale-95"
+              disabled={isSubmitting}
+              className="w-full sm:w-auto px-5 py-3 rounded-xl text-xs font-bold text-white bg-brand-600 hover:bg-brand-500 shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
-              Simpan Master SKU
+              {isSubmitting ? 'Menyimpan...' : 'Simpan Master SKU'}
             </button>
           </div>
         </form>

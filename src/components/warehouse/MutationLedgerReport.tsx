@@ -118,7 +118,7 @@ export const MutationLedgerReport: React.FC = () => {
   };
 
   return (
-    <div className="space-y-4 pb-20 sm:pb-6">
+    <div className="space-y-4">
       {/* Header & Export Actions */}
       <div className="flex items-center justify-between gap-2">
         <div>
@@ -134,7 +134,7 @@ export const MutationLedgerReport: React.FC = () => {
         <div className="flex items-center gap-1.5">
           <button
             onClick={handlePrint}
-            className="p-2 sm:px-3 sm:py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 active:scale-95 shadow-sm"
+            className="p-2 sm:px-3 sm:py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 active:scale-95 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
             title="Cetak PDF"
           >
             <Printer className="w-4 h-4" />
@@ -150,8 +150,8 @@ export const MutationLedgerReport: React.FC = () => {
         </div>
       </div>
 
-      {/* KPI Cards Grid (2x2 on mobile) */}
-      <div className="grid grid-cols-2 gap-2.5">
+      {/* KPI Cards Grid (2 cols mobile, 4 cols desktop) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <StatCard
           title="Inbound"
           value={`${formatNumber(totalInboundQty)}`}
@@ -186,15 +186,15 @@ export const MutationLedgerReport: React.FC = () => {
       </div>
 
       {/* Filter Controls Bar */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-3 shadow-sm space-y-2.5">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-3 sm:p-4 shadow-sm space-y-2.5">
         <div className="relative">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
           <input
             type="text"
-            placeholder="Cari SKU, DO, catatan..."
+            placeholder="Cari SKU, nama barang, kode referensi, atau catatan..."
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-3.5 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none"
+            className="w-full pl-9 pr-3.5 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500"
           />
         </div>
 
@@ -202,7 +202,7 @@ export const MutationLedgerReport: React.FC = () => {
           <select
             value={storeFilter}
             onChange={e => setStoreFilter(e.target.value === 'ALL' ? 'ALL' : Number(e.target.value))}
-            className="px-2.5 py-1.5 text-xs font-medium rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
+            className="px-2.5 py-1.5 text-xs font-medium rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
           >
             <option value="ALL">Semua Cabang</option>
             <option value={1}>Toko 1</option>
@@ -213,7 +213,7 @@ export const MutationLedgerReport: React.FC = () => {
           <select
             value={typeFilter}
             onChange={e => setTypeFilter(e.target.value as any)}
-            className="px-2.5 py-1.5 text-xs font-medium rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
+            className="px-2.5 py-1.5 text-xs font-medium rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
           >
             <option value="ALL">Semua Tipe</option>
             <option value="PURCHASE_INBOUND">Inbound</option>
@@ -225,7 +225,7 @@ export const MutationLedgerReport: React.FC = () => {
           <select
             value={timeRange}
             onChange={e => setTimeRange(e.target.value as any)}
-            className="col-span-2 sm:col-span-1 px-2.5 py-1.5 text-xs font-medium rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
+            className="col-span-2 sm:col-span-1 px-2.5 py-1.5 text-xs font-medium rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
           >
             <option value="ALL">Semua Waktu</option>
             <option value="TODAY">Hari Ini</option>
@@ -235,7 +235,7 @@ export const MutationLedgerReport: React.FC = () => {
         </div>
       </div>
 
-      {/* Mobile Mutation Cards */}
+      {/* Mutation Cards Grid */}
       {filteredMutations.length === 0 ? (
         <div className="p-8 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
           <BookOpen className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
@@ -247,7 +247,7 @@ export const MutationLedgerReport: React.FC = () => {
           </p>
         </div>
       ) : (
-        <div className="space-y-2.5">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {filteredMutations.map(m => {
             const item = itemMap.get(m.item_id);
             const fromLoc = m.from_location_id !== null && m.from_location_id !== undefined ? locMap.get(m.from_location_id)?.name : '-';
@@ -278,7 +278,7 @@ export const MutationLedgerReport: React.FC = () => {
                     </span>
                   </div>
 
-                  <div className={`text-right font-black text-sm ${
+                  <div className={`text-right font-mono tabular-nums font-bold text-sm ${
                     isLoss ? 'text-rose-600 dark:text-rose-400' : isOut ? 'text-indigo-600 dark:text-indigo-400' : 'text-emerald-600 dark:text-emerald-400'
                   }`}>
                     {m.qty} {item?.unit || 'PCS'}

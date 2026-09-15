@@ -23,6 +23,7 @@ export const App: React.FC = () => {
   const { currentUser, isWarehouseAdmin } = useAuth();
   const [activeTab, setActiveTab] = useState<NavigationTab>('warehouse_dashboard');
   const [isCreateRequestModalOpen, setIsCreateRequestModalOpen] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   // Sync default tab when user switches role
   useEffect(() => {
@@ -44,6 +45,7 @@ export const App: React.FC = () => {
       setActiveTab(tab);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
+    setMobileSidebarOpen(false);
   };
 
   if (!currentUser) {
@@ -57,21 +59,21 @@ export const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors duration-200">
-      {/* Mobile-Optimized Top App Bar */}
-      <Navbar />
+      {/* Top App Bar */}
+      <Navbar onToggleMobileMenu={() => setMobileSidebarOpen(prev => !prev)} />
 
-      {/* Main Layout Container (Centered for Mobile Screen Focus) */}
-      <div className="flex-1 flex max-w-2xl w-full mx-auto">
-        {/* Desktop Sidebar (Only visible on large screens) */}
+      {/* Main Responsive Layout Container */}
+      <div className="flex-1 flex max-w-7xl w-full mx-auto px-0 sm:px-4 lg:px-6">
+        {/* Desktop Sidebar & Mobile Drawer */}
         <Sidebar
           activeTab={activeTab}
           onSelectTab={handleSelectTab}
-          mobileOpen={false}
-          onCloseMobile={() => {}}
+          mobileOpen={mobileSidebarOpen}
+          onCloseMobile={() => setMobileSidebarOpen(false)}
         />
 
-        {/* Smartphone Content Viewport */}
-        <main className="flex-1 p-3.5 sm:p-6 min-w-0">
+        {/* Dynamic Content Viewport */}
+        <main className="flex-1 p-3.5 sm:p-6 pb-24 lg:pb-8 min-w-0">
           {/* Warehouse Admin Views */}
           {isWarehouseAdmin && (
             <>
