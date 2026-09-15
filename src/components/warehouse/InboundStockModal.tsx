@@ -22,7 +22,7 @@ export const InboundStockModal: React.FC<InboundStockModalProps> = ({
   const { currentUser } = useAuth();
 
   const [itemId, setItemId] = useState<number>(preselectedItemId || (items[0]?.id ?? 1));
-  const [qty, setQty] = useState<number>(100);
+  const [qty, setQty] = useState<number | string>(100);
   const [supplierName, setSupplierName] = useState<string>('PT. Distribusi Utama Prima');
   const [notes, setNotes] = useState<string>('Penerimaan PO Pabrik / Supplier');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -39,14 +39,15 @@ export const InboundStockModal: React.FC<InboundStockModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser) return;
-    if (qty <= 0) {
+    const parsedQty = Number(qty);
+    if (!parsedQty || parsedQty <= 0) {
       alert('Jumlah kuantiti harus lebih dari 0');
       return;
     }
 
     setIsSubmitting(true);
     try {
-      await inboundStock(Number(itemId), Number(qty), notes, currentUser.id, supplierName);
+      await inboundStock(Number(itemId), parsedQty, notes, currentUser.id, supplierName);
       onClose();
       // Reset form defaults
       setQty(100);
@@ -105,7 +106,13 @@ export const InboundStockModal: React.FC<InboundStockModalProps> = ({
                 min="1"
                 required
                 value={qty}
-                onChange={e => setQty(Math.max(1, parseInt(e.target.value) || 0))}
+                onChange={e => {
+                  const val = e.target.value;
+                  setQty(val === '' ? '' : Math.max(0, parseInt(val) || 0));
+                }}
+                onBlur={() => {
+                  if (!qty || Number(qty) < 1) setQty(1);
+                }}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-bold focus:ring-2 focus:ring-brand-500 focus:outline-none"
               />
               <ArrowDownRight className="w-4 h-4 text-emerald-500 absolute right-3 top-3" />

@@ -15,7 +15,7 @@ interface CreateRequestModalProps {
 
 interface ItemRow {
   itemId: number;
-  qtyRequested: number;
+  qtyRequested: number | string;
 }
 
 export const CreateRequestModal: React.FC<CreateRequestModalProps> = ({
@@ -40,7 +40,7 @@ export const CreateRequestModal: React.FC<CreateRequestModalProps> = ({
   // Calculate Total Estimated Value
   const totalEstimatedValue = rows.reduce((sum, row) => {
     const itm = itemMap.get(row.itemId);
-    return sum + ((itm?.price || 0) * (row.qtyRequested || 0));
+    return sum + ((itm?.price || 0) * (Number(row.qtyRequested) || 0));
   }, 0);
 
   const myLocationId = currentLocation?.id;
@@ -81,7 +81,10 @@ export const CreateRequestModal: React.FC<CreateRequestModalProps> = ({
       return;
     }
 
-    const validRows = rows.filter(r => r.qtyRequested > 0);
+    const validRows = rows
+      .map(r => ({ itemId: r.itemId, qtyRequested: Number(r.qtyRequested) || 0 }))
+      .filter(r => r.qtyRequested > 0);
+
     if (validRows.length === 0) {
       alert('Pilih minimal 1 barang dengan kuantiti > 0.');
       return;
@@ -135,7 +138,7 @@ export const CreateRequestModal: React.FC<CreateRequestModalProps> = ({
             <div className="space-y-2.5">
               {rows.map((row, idx) => {
                 const currentItem = itemMap.get(row.itemId);
-                const subtotal = (currentItem?.price || 0) * row.qtyRequested;
+                const subtotal = (currentItem?.price || 0) * (Number(row.qtyRequested) || 0);
 
                 return (
                   <div
@@ -177,7 +180,7 @@ export const CreateRequestModal: React.FC<CreateRequestModalProps> = ({
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
-                          onClick={() => handleRowChange(idx, 'qtyRequested', Math.max(1, row.qtyRequested - 5))}
+                          onClick={() => handleRowChange(idx, 'qtyRequested', Math.max(1, (Number(row.qtyRequested) || 0) - 5))}
                           className="p-1.5 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 active:scale-90"
                         >
                           <Minus className="w-4 h-4" />
@@ -188,13 +191,21 @@ export const CreateRequestModal: React.FC<CreateRequestModalProps> = ({
                           min="1"
                           required
                           value={row.qtyRequested}
-                          onChange={e => handleRowChange(idx, 'qtyRequested', Math.max(1, parseInt(e.target.value) || 0))}
+                          onChange={e => {
+                            const val = e.target.value;
+                            handleRowChange(idx, 'qtyRequested', val === '' ? '' : Math.max(0, parseInt(val) || 0));
+                          }}
+                          onBlur={() => {
+                            if (!row.qtyRequested || Number(row.qtyRequested) < 1) {
+                              handleRowChange(idx, 'qtyRequested', 1);
+                            }
+                          }}
                           className="w-16 py-1 text-center font-black text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
                         />
 
                         <button
                           type="button"
-                          onClick={() => handleRowChange(idx, 'qtyRequested', row.qtyRequested + 5)}
+                          onClick={() => handleRowChange(idx, 'qtyRequested', (Number(row.qtyRequested) || 0) + 5)}
                           className="p-1.5 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 active:scale-90"
                         >
                           <Plus className="w-4 h-4" />

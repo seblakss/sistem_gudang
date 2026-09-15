@@ -23,7 +23,14 @@ export const MasterItemManagement: React.FC = () => {
   const [selectedInboundItemId, setSelectedInboundItemId] = useState<number | undefined>(undefined);
 
   // Form State New Item
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    sku: string;
+    name: string;
+    category: string;
+    unit: string;
+    price: number | string;
+    safety_stock: number | string;
+  }>({
     sku: '',
     name: '',
     category: 'Elektronik',
@@ -368,7 +375,15 @@ export const MasterItemManagement: React.FC = () => {
                 required
                 placeholder="50000"
                 value={formData.price}
-                onChange={e => setFormData({ ...formData, price: parseInt(e.target.value) || 0 })}
+                onChange={e => {
+                  const val = e.target.value;
+                  setFormData({ ...formData, price: val === '' ? '' : Math.max(0, parseInt(val) || 0) });
+                }}
+                onBlur={() => {
+                  if (formData.price === '') {
+                    setFormData(prev => ({ ...prev, price: 0 }));
+                  }
+                }}
                 className="w-full px-3.5 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-bold focus:ring-2 focus:ring-brand-500 focus:outline-none"
               />
             </div>
@@ -381,8 +396,17 @@ export const MasterItemManagement: React.FC = () => {
                 type="number"
                 min="0"
                 required
+                placeholder="10"
                 value={formData.safety_stock}
-                onChange={e => setFormData({ ...formData, safety_stock: parseInt(e.target.value) || 0 })}
+                onChange={e => {
+                  const val = e.target.value;
+                  setFormData({ ...formData, safety_stock: val === '' ? '' : Math.max(0, parseInt(val) || 0) });
+                }}
+                onBlur={() => {
+                  if (formData.safety_stock === '') {
+                    setFormData(prev => ({ ...prev, safety_stock: 0 }));
+                  }
+                }}
                 className="w-full px-3.5 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-bold focus:ring-2 focus:ring-brand-500 focus:outline-none"
               />
             </div>

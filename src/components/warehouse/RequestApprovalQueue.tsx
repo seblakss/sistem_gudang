@@ -20,7 +20,7 @@ export const RequestApprovalQueue: React.FC = () => {
   // Action Modals State
   const [activeRequest, setActiveRequest] = useState<TransferRequest | null>(null);
   const [modalType, setModalType] = useState<'PARTIAL' | 'REJECT' | null>(null);
-  const [partialQtys, setPartialQtys] = useState<{ [itemId: number]: number }>({});
+  const [partialQtys, setPartialQtys] = useState<{ [itemId: number]: number | string }>({});
   const [notes, setNotes] = useState<string>('');
 
   const itemMap = new Map(items.map(i => [i.id, i]));
@@ -58,7 +58,7 @@ export const RequestApprovalQueue: React.FC = () => {
 
   const openPartialModal = (req: TransferRequest) => {
     setActiveRequest(req);
-    const initial: { [itemId: number]: number } = {};
+    const initial: { [itemId: number]: number | string } = {};
     req.items.forEach(item => {
       const available = getWarehouseStock(item.item_id);
       initial[item.item_id] = Math.min(item.qty_requested, available);
@@ -80,10 +80,14 @@ export const RequestApprovalQueue: React.FC = () => {
 
     try {
       if (modalType === 'PARTIAL') {
-        const approvedItems = activeRequest.items.map(item => ({
-          itemId: item.item_id,
-          qtyApproved: partialQtys[item.item_id] !== undefined ? partialQtys[item.item_id] : item.qty_requested,
-        }));
+        const approvedItems = activeRequest.items.map(item => {
+          const raw = partialQtys[item.item_id];
+          const qtyApproved = raw === '' || raw === undefined ? item.qty_requested : Number(raw);
+          return {
+            itemId: item.item_id,
+            qtyApproved,
+          };
+        });
 
         await authorizeRequest(activeRequest.id, currentUser.id, 'APPROVE_PARTIAL', {
           approvedItems,
@@ -332,7 +336,7 @@ export const RequestApprovalQueue: React.FC = () => {
                             type="button"
                             onClick={() => setPartialQtys({
                               ...partialQtys,
-                              [item.item_id]: Math.max(0, currentApproved - 1),
+                              [item.item_id]: Math.max(0, (Number(currentApproved) || 0) - 1),
                             })}
                             className="p-1.5 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 active:scale-90"
                           >
@@ -345,11 +349,27 @@ export const RequestApprovalQueue: React.FC = () => {
                             max={available}
                             value={currentApproved}
                             onChange={e => {
-                              const val = parseInt(e.target.value) || 0;
+                              const raw = e.target.value;
+                              if (raw === '') {
+                                setPartialQtys({
+                                  ...partialQtys,
+                                  [item.item_id]: '',
+                                });
+                                return;
+                              }
+                              const val = parseInt(raw) || 0;
                               setPartialQtys({
                                 ...partialQtys,
-                                [item.item_id]: Math.min(val, available),
+                                [item.item_id]: Math.min(Math.max(0, val), available),
                               });
+                            }}
+                            onBlur={() => {
+                              if (partialQtys[item.item_id] === '') {
+                                setPartialQtys({
+                                  ...partialQtys,
+                                  [item.item_id]: 0,
+                                });
+                              }
                             }}
                             className="w-16 py-1 text-center font-black text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
                           />
@@ -358,7 +378,7 @@ export const RequestApprovalQueue: React.FC = () => {
                             type="button"
                             onClick={() => setPartialQtys({
                               ...partialQtys,
-                              [item.item_id]: Math.min(available, currentApproved + 1),
+                              [item.item_id]: Math.min(available, (Number(currentApproved) || 0) + 1),
                             })}
                             className="p-1.5 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 active:scale-90"
                           >

@@ -24,12 +24,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [users, setUsers] = useState<User[]>(() => StorageRepository.getUsers());
   const [locations] = useState<Location[]>(() => StorageRepository.getLocations());
   
+  // ponytail: active session stored in localStorage as JSON. Ceiling: client-side session without JWT refresh token expiry. Upgrade path: use Supabase Auth session with refresh tokens if moving to strict JWT auth.
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
-    const savedUserId = localStorage.getItem('wms_active_user_id');
-    const uList = StorageRepository.getUsers();
-    if (savedUserId) {
-      const found = uList.find(u => u.id === savedUserId && u.is_active !== false);
-      if (found) return found;
+    try {
+      const savedUser = localStorage.getItem('wms_active_user');
+      if (savedUser) {
+        const parsed: User = JSON.parse(savedUser);
+        if (parsed && parsed.id && parsed.is_active !== false) {
+          return parsed;
+        }
+      }
+      const savedUserId = localStorage.getItem('wms_active_user_id');
+      if (savedUserId) {
+        const uList = StorageRepository.getUsers();
+        const found = uList.find(u => u.id === savedUserId && u.is_active !== false);
+        if (found) return found;
+      }
+    } catch {
+      // ignore JSON parse error
     }
     return null;
   });
@@ -37,6 +49,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const refreshUsers = useCallback(async () => {
     const list = await SupabaseService.getUsers();
     setUsers(list);
+    setCurrentUser(prev => {
+      if (!prev) return null;
+      const fresh = list.find(u => u.id === prev.id || u.username.toLowerCase() === prev.username.toLowerCase());
+      if (fresh) {
+        if (fresh.is_active === false) return null;
+        return { ...prev, ...fresh };
+      }
+      return prev;
+    });
   }, []);
 
   useEffect(() => {
@@ -45,8 +66,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     if (currentUser) {
+      localStorage.setItem('wms_active_user', JSON.stringify(currentUser));
       localStorage.setItem('wms_active_user_id', currentUser.id);
     } else {
+      localStorage.removeItem('wms_active_user');
       localStorage.removeItem('wms_active_user_id');
     }
   }, [currentUser]);
@@ -66,13 +89,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const res = await SupabaseService.authenticateUser(username, password);
     if (res.success && res.user) {
       setCurrentUser(res.user);
-      localStorage.setItem('wms_active_user_id', res.user.id);
       return { success: true };
     }
     return { success: false, message: res.message || 'Login gagal' };
   };
 
   const logout = () => {
+    localStorage.removeItem('wms_active_user');
     localStorage.removeItem('wms_active_user_id');
     setCurrentUser(null);
   };

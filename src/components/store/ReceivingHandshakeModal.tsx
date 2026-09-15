@@ -26,8 +26,8 @@ export const ReceivingHandshakeModal: React.FC<ReceivingHandshakeModalProps> = (
   const itemMap = new Map(items.map(i => [i.id, i]));
 
   // State actual received quantities & reasons
-  const [receivedQtys, setReceivedQtys] = useState<{ [itemId: number]: number }>(() => {
-    const initial: { [itemId: number]: number } = {};
+  const [receivedQtys, setReceivedQtys] = useState<{ [itemId: number]: number | string }>(() => {
+    const initial: { [itemId: number]: number | string } = {};
     request.items.forEach(item => {
       initial[item.item_id] = item.qty_dispatched;
     });
@@ -38,7 +38,8 @@ export const ReceivingHandshakeModal: React.FC<ReceivingHandshakeModalProps> = (
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const hasDiscrepancy = request.items.some(item => {
-    const actual = receivedQtys[item.item_id] ?? item.qty_dispatched;
+    const raw = receivedQtys[item.item_id];
+    const actual = raw === '' || raw === undefined ? item.qty_dispatched : Number(raw);
     return actual < item.qty_dispatched;
   });
 
@@ -49,7 +50,8 @@ export const ReceivingHandshakeModal: React.FC<ReceivingHandshakeModalProps> = (
     // Validate reason if discrepancy exists
     if (hasDiscrepancy) {
       for (const item of request.items) {
-        const actual = receivedQtys[item.item_id] ?? item.qty_dispatched;
+        const raw = receivedQtys[item.item_id];
+        const actual = raw === '' || raw === undefined ? item.qty_dispatched : Number(raw);
         if (actual < item.qty_dispatched) {
           const reason = discrepancyReasons[item.item_id];
           if (!reason || !reason.trim()) {
@@ -62,11 +64,15 @@ export const ReceivingHandshakeModal: React.FC<ReceivingHandshakeModalProps> = (
 
     setIsSubmitting(true);
     try {
-      const payload = request.items.map(item => ({
-        itemId: item.item_id,
-        qtyReceived: receivedQtys[item.item_id] ?? item.qty_dispatched,
-        discrepancyReason: discrepancyReasons[item.item_id] || '',
-      }));
+      const payload = request.items.map(item => {
+        const raw = receivedQtys[item.item_id];
+        const qtyReceived = raw === '' || raw === undefined ? item.qty_dispatched : Number(raw);
+        return {
+          itemId: item.item_id,
+          qtyReceived,
+          discrepancyReason: discrepancyReasons[item.item_id] || '',
+        };
+      });
 
       await receiveTransfer(request.id, currentUser.id, payload);
       onClose();
@@ -108,7 +114,8 @@ export const ReceivingHandshakeModal: React.FC<ReceivingHandshakeModalProps> = (
             {request.items.map(item => {
               const masterItem = itemMap.get(item.item_id);
               const currentQtyReceived = receivedQtys[item.item_id] ?? item.qty_dispatched;
-              const isShort = currentQtyReceived < item.qty_dispatched;
+              const numReceived = currentQtyReceived === '' ? 0 : Number(currentQtyReceived);
+              const isShort = numReceived < item.qty_dispatched;
 
               return (
                 <div
@@ -122,12 +129,20 @@ export const ReceivingHandshakeModal: React.FC<ReceivingHandshakeModalProps> = (
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
                       <span className="font-bold text-xs text-slate-900 dark:text-white block truncate">
-                        {masterItem?.name}
+                        {masterItem?.name || `Item #${item.item_id}`}
                       </span>
-                      <span className="text-[10px] text-slate-400 font-mono">
-                        SKU: {masterItem?.sku} • Surat Jalan (DO): <strong>{item.qty_dispatched} {masterItem?.unit || 'PCS'}</strong>
+                      <span className="text-[10px] text-slate-500 block">
+                        SKU: {masterItem?.sku || '-'} • Dikirim: <strong className="text-slate-700 dark:text-slate-300">{item.qty_dispatched} {masterItem?.unit}</strong>
                       </span>
                     </div>
+
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${
+                      isShort
+                        ? 'bg-rose-100 dark:bg-rose-900/50 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800'
+                        : 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                    }`}>
+                      {isShort ? 'Selisih' : 'Sesuai'}
+                    </span>
                   </div>
 
                   {/* Touch Stepper [-] [counter] [+] */}
@@ -139,7 +154,7 @@ export const ReceivingHandshakeModal: React.FC<ReceivingHandshakeModalProps> = (
                         type="button"
                         onClick={() => setReceivedQtys({
                           ...receivedQtys,
-                          [item.item_id]: Math.max(0, currentQtyReceived - 1),
+                          [item.item_id]: Math.max(0, (Number(currentQtyReceived) || 0) - 1),
                         })}
                         className="p-2 rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 active:scale-90"
                       >
@@ -152,11 +167,27 @@ export const ReceivingHandshakeModal: React.FC<ReceivingHandshakeModalProps> = (
                         max={item.qty_dispatched}
                         value={currentQtyReceived}
                         onChange={e => {
-                          const val = parseInt(e.target.value) || 0;
+                          const raw = e.target.value;
+                          if (raw === '') {
+                            setReceivedQtys({
+                              ...receivedQtys,
+                              [item.item_id]: '',
+                            });
+                            return;
+                          }
+                          const val = parseInt(raw) || 0;
                           setReceivedQtys({
                             ...receivedQtys,
-                            [item.item_id]: Math.min(val, item.qty_dispatched),
+                            [item.item_id]: Math.min(Math.max(0, val), item.qty_dispatched),
                           });
+                        }}
+                        onBlur={() => {
+                          if (receivedQtys[item.item_id] === '') {
+                            setReceivedQtys({
+                              ...receivedQtys,
+                              [item.item_id]: 0,
+                            });
+                          }
                         }}
                         className={`w-16 py-1.5 text-center font-black text-sm rounded-xl border ${
                           isShort
@@ -169,7 +200,7 @@ export const ReceivingHandshakeModal: React.FC<ReceivingHandshakeModalProps> = (
                         type="button"
                         onClick={() => setReceivedQtys({
                           ...receivedQtys,
-                          [item.item_id]: Math.min(item.qty_dispatched, currentQtyReceived + 1),
+                          [item.item_id]: Math.min(item.qty_dispatched, (Number(currentQtyReceived) || 0) + 1),
                         })}
                         className="p-2 rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 active:scale-90"
                       >
@@ -182,7 +213,7 @@ export const ReceivingHandshakeModal: React.FC<ReceivingHandshakeModalProps> = (
                   {isShort && (
                     <div className="pt-2 border-t border-rose-200 dark:border-rose-900/40 space-y-1">
                       <span className="text-[10px] font-bold text-rose-600 block">
-                        Kurang {item.qty_dispatched - currentQtyReceived} {masterItem?.unit}. Wajib isi alasan:
+                        Kurang {item.qty_dispatched - numReceived} {masterItem?.unit}. Wajib isi alasan:
                       </span>
                       <input
                         type="text"
