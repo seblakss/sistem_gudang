@@ -28,10 +28,11 @@ build/
 .env.production.local
 !/.env.example
 
-# Editor directories and files
+# Editor & agent directories
 .vscode/*
 !.vscode/extensions.json
 .idea
+.claude/
 .DS_Store
 *.suo
 *.ntvs*
@@ -39,6 +40,14 @@ build/
 *.sln
 *.sw?
 Thumbs.db
+
+# Sensitive credentials & keys
+*.pem
+*.key
+*.cert
+*.crt
+*.pfx
+
 
 # Temporary / test files
 test_output.xlsx
